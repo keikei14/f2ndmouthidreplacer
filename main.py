@@ -1,65 +1,73 @@
-import re
 import os
-import traceback
-import time
+import sys
+import array
+import dbs
 
-ids = {
-    # f2nd id: ft id
-    '5': '1',
-    '6': '2',
-    '7': '3',
-    '8': '38',
-    '9': '10',
-    '11': '5',
-    '13': '11',
-    '12': '13',
-    '14': '8',
-    '15': '9',
-    '16': '10',
-    '17': '11',
-    '4': '16',
-    '22': '16'
-}
+files = ['f2nd.dsc']
 
+# allow specifying multiple files on command line
+if len(sys.argv) > 1:
+    files = sys.argv[1:]
 
-def replacement(match, d, group):
-    for key in d:
-        if re.match(key, match.group(group)):
-            return str(d[key])
-    return str(match.group(group))
+for file in files:
+    dsc_array_in = array.array('i')
+    dsc_array_out = array.array('i')
 
+    # use frombytes because fromfile requires length
+    f_in = open(file, 'rb')
+    dsc_array_in.frombytes(f_in.read())
+    f_in.close()
 
-def mg(match, d, group):
-    group1 = match.group(1)
-    group2 = match.group(2)
-    group4 = match.group(4)
-    group5 = match.group(5)
-    replmouthid = replacement(match, d, group)
-    strm = f'MOUTH_ANIM({group1}, {group2}, {replmouthid}, {group4}, {group5})'
-    return strm
+    # convert big to little endian
+    dsc_array_in.byteswap()
 
+    # magic
+    dsc_array_out.append(0x14050921)
 
-def main():
-    try:
-        with open('f2nd.txt', 'r') as inp:
-            string = inp.read()
-            pattern1 = re.compile(r"MOUTH_ANIM\W(\d+)\, (\d+)\, (?P<mouthid>\d+)\, (\d+)\, (\d+)\W")
-            output = pattern1.sub(lambda x: mg(x, ids, 'mouthid'), string)
-            if os.path.isfile('ft.txt'):
-                os.remove('ft.txt')
-                with open('ft.txt', 'w') as outfile:
-                    outfile.write(output)
-            else:
-                with open('ft.txt', 'w') as outfile:
-                    outfile.write(output)
+    # dsc_array_in[i] is the command id
+    # f2 scripts start from 18
+    i = 18
+    while True:
+        command = dsc_array_in[i]
 
-    except FileNotFoundError:
-        traceback.print_exc()
-        print(
-            '\n\nmake sure u added a f2nd.txt in the same directory as this script with the dsc commands inside!'.upper())
-        time.sleep(8)
-        exit()
+        if command == 0x13:  # MOUTH_ANIM
+            # modify the third parameter of MOUTH_ANIM
+            mouth = dsc_array_in[i + 3]
+            dsc_array_in[i + 3] = dbs.f2nd_to_ft_mouths.get(mouth, mouth)
 
+        # get properties of the input command
+        input_param_cnt = dbs.command_lengths_f2[command]
+        command_str = dbs.command_to_string_f2[command]
+        print(command_str)
 
-if __name__ == '__main__':
-    main()
+        # only process output if it's a valid command
+        if command_str in dbs.string_to_command_ft:
+            output_command = dbs.string_to_command_ft[command_str]
+            dsc_array_out.append(output_command)
+
+            output_param_cnt = dbs.command_lengths_ft[output_command]
+
+            for param in range(0, output_param_cnt):
+                if param < input_param_cnt:
+                    dsc_array_out.append(dsc_array_in[i + 1 + param])
+                else:
+                    dsc_array_out.append(0)
+
+        i += 1 + input_param_cnt
+
+        if command == 0:
+            # stop processing if found END
+            break
+
+        if i > len(dsc_array_in):
+            break
+
+    file_split = os.path.splitext(file)
+
+    output_name = 'ft.dsc'
+    if file != 'f2nd.dsc':
+        output_name = file_split[0] + '_ft' + file_split[1]
+
+    f_out = open(output_name, 'wb')
+    dsc_array_out.tofile(f_out)
+    f_out.close()
