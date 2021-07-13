@@ -105,6 +105,10 @@ command_lengths_f2 = [
     112,  # EDIT_CAMERA_BOX
     1,  # EDIT_STAGE_PARAM
     1,  # EDIT_CHANGE_FIELD
+    2,  # LYRIC_2
+    2,  # LYRIC_READ
+    2,  # LYRIC_READ_2
+    5,  # ANNOTATION
 ]
 
 command_lengths_ft = [
@@ -324,6 +328,10 @@ command_to_string_f2 = {
     0x67: 'EDIT_CAMERA_BOX',
     0x68: 'EDIT_STAGE_PARAM',
     0x69: 'EDIT_CHANGE_FIELD',
+    0x6B: 'LYRIC_2',
+    0x6C: 'LYRIC_READ',
+    0x6D: 'LYRIC_READ_2',
+    0x6E: 'ANNOTATION',
 }
 
 command_to_string_ft = {
@@ -543,6 +551,10 @@ string_to_command_f2 = {
     'EDIT_CAMERA_BOX': 0x67,
     'EDIT_STAGE_PARAM': 0x68,
     'EDIT_CHANGE_FIELD': 0x69,
+    'LYRIC_2': 0x6B,
+    'LYRIC_READ': 0x6C,
+    'LYRIC_READ_2': 0x6D,
+    'ANNOTATION': 0x6E,
 }
 
 string_to_command_ft = {
